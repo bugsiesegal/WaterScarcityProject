@@ -19,16 +19,19 @@ class NeuralNetwork(nn.Module):
     def __init__(self):
         super(NeuralNetwork, self).__init__()
         self.sequence = nn.Sequential(
-
+            nn.LazyConvTranspose2d(180, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(180),
+            nn.ReLU(True),
+            nn.LazyConv2d(180, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(180)
         )
-
 
     def forward(self, x):
         x = torch.nan_to_num(x, nan=0, neginf=0, posinf=0)
-
-
+        x = torch.reshape(x, (-1, 1, 360, 180))
+        x = self.sequence(x)
+        x = torch.reshape(x, (-1, 1, 180, 360))
         return x
-
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using {device} device")
@@ -39,21 +42,21 @@ data = dataprocessing.make_block(data)
 
 net = NeuralNetwork().to(device)
 
-net.load_state_dict(torch.load("C:/Users/bugsi/PycharmProjects/WaterScarcityProject/model.pt"))
-net.eval()
+# net.load_state_dict(torch.load("C:/Users/bugsi/PycharmProjects/WaterScarcityProject/model.pt"))
+# net.eval()
 
 data = dataprocessing.CustomDataset(data, transform=torch.from_numpy, target_transform=torch.from_numpy)
 
-train_dataloader = DataLoader(data, batch_size=64, shuffle=True)
+train_dataloader = DataLoader(data, batch_size=4, shuffle=True)
 
 criterion = nn.L1Loss()
-optimizer = optim.Adam(net.parameters(), lr=0.00001)
+optimizer = optim.Adam(net.parameters(), lr=0.1)
 
 dataiter = iter(train_dataloader)
 block, block_pred = dataiter.next()
-
+torch.cuda.empty_cache()
 running_loss = 0.0
-for epoch in range(1000):  # loop over the dataset multiple times
+for epoch in range(10):  # loop over the dataset multiple times
     print(epoch)
     for i, data in enumerate(train_dataloader, 0):
         # get the inputs; data is a list of [inputs, labels]
@@ -92,5 +95,3 @@ torch.save(net.state_dict(), "C:/Users/bugsi/PycharmProjects/WaterScarcityProjec
 plt.show()
 
 print('Finished Training')
-
-
